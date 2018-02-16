@@ -12,6 +12,24 @@
 #  BLAS_LIBRARIES - list of libraries to link against to use BLAS
 #  BLAS_INCLUDE_DIR - include directory
 
+find_path(OPENBLAS_INCLUDE_DIR openblas_config.h
+  PATHS
+  c:/OpenRedukti/include/openblas
+  c:/Software/ravi/include/openblas
+  ~/OpenRedukti/include/openblas
+)
+
+find_library(OPENBLAS_LIBRARY
+  NAMES openblas libopenblas
+  PATHS
+  c:/OpenRedukti/lib
+  c:/Software/ravi/lib
+  ~/OpenRedukti/lib
+)
+
+set( BLAS_INCLUDE_DIR "${OPENBLAS_INCLUDE_DIR}" )
+set( BLAS_LIBRARIES "${OPENBLAS_LIBRARY}" )
+
 # Do nothing is BLAS was found before
 IF(NOT BLAS_FOUND)
 

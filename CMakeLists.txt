@@ -6,9 +6,22 @@ ELSE()
   CMAKE_POLICY(VERSION 2.8)
 ENDIF()
 
+option(USE_LUA53 "Controls whether the library will be for Lua 5.3 or Ravi, default is OFF" OFF)
+
 SET(CMAKE_MODULE_PATH
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake"
   "${CMAKE_MODULE_PATH}")
+
+find_package(Lua REQUIRED)
+
+message(STATUS "LUA_INCLUDE_DIR: ${LUA_INCLUDE_DIR}")
+message(STATUS "LUA_LIBRARIES  : ${LUA_LIBRARIES}")
+
+message(STATUS "LUA_INCDIR     : ${LUA_INCDIR}")
+message(STATUS "LUA_LIBDIR     : ${LUA_LIBDIR}")
+message(STATUS "LUALIB         : ${LUALIB}")
+message(STATUS "LIBDIR (LUA_CPATH)  : ${LIBDIR}")
+message(STATUS "LUADIR (LUA_PATH)   : ${LUADIR}")
 
 IF (NOT MSVC)
   IF (MINGW)
@@ -23,6 +36,32 @@ ENDIF(NOT MSVC)
 IF(MSVC)
   # we want to respect the standard, and we are bored of those **** .
   ADD_DEFINITIONS(-D_CRT_SECURE_NO_DEPRECATE=1)
+  set(CMAKE_C_FLAGS_DEBUG "/Od /D_DEBUG /MDd /Zi /RTC1 /EHsc")
+  set(CMAKE_C_FLAGS_RELEASE "/DNDEBUG /O2 /MD /EHsc")
+  set(CMAKE_C_FLAGS_RELWITHDEBINFO "/DNDEBUG /O2 /MD /Zi /EHsc")
+  set(CMAKE_C_FLAGS_MINSIZEREL "/DNDEBUG /O2 /MD /EHsc")
+
+  set(CMAKE_CXX_FLAGS "/EHsc")
+  set(CMAKE_CXX_FLAGS_DEBUG "/Od /D_DEBUG /MDd /Zi /RTC1 /EHsc")
+  set(CMAKE_CXX_FLAGS_RELEASE "/DNDEBUG /O2 /MD /EHsc")
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/DNDEBUG /O2 /MD /Zi /EHsc")
+  set(CMAKE_CXX_FLAGS_MINSIZEREL "/DNDEBUG /O2 /MD /EHsc")
+
+  # Disable signed/unsigned int conversion warnings.
+  add_definitions("/wd4018")
+  # Disable warning about using struct/class for the same symobl.
+  add_definitions("/wd4099")
+  # Disable performance warning about int-to-bool conversion.
+  add_definitions("/wd4800")
+  # Disable signed/unsigned int conversion warnings.
+  add_definitions("/wd4018")
+  # Disable warning about the insecurity of using "std::copy".
+  add_definitions("/wd4996")
+  add_definitions("/wd4291")
+  add_definitions("/wd4624")
+  add_definitions("/wd4141")
+  add_definitions("/DLUA_COMPAT_5_2")
+  add_definitions("/DLUA_COMPAT_5_1")
 ENDIF(MSVC)
 
 # OpenMP support?

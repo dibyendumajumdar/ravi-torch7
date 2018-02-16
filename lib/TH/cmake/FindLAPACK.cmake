@@ -12,6 +12,14 @@
 # Note: I do not think it is a good idea to mixup different BLAS/LAPACK versions
 # Hence, this script wants to find a Lapack library matching your Blas library
 
+find_library(LAPACK_LIBRARY
+  NAMES lapack liblapack
+  PATHS
+  c:/OpenRedukti/lib
+  c:/Software/ravi/lib
+  ~/OpenRedukti/lib
+)
+
 # Do nothing if LAPACK was found before
 IF(NOT LAPACK_FOUND)
 
