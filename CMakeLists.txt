@@ -19,6 +19,7 @@ message(STATUS "LUA_LIBRARIES  : ${LUA_LIBRARIES}")
 
 message(STATUS "LUA_INCDIR     : ${LUA_INCDIR}")
 message(STATUS "LUA_LIBDIR     : ${LUA_LIBDIR}")
+message(STATUS "LUA_BINDIR     : ${LUA_BINDIR}")
 message(STATUS "LUALIB         : ${LUALIB}")
 message(STATUS "LIBDIR (LUA_CPATH)  : ${LIBDIR}")
 message(STATUS "LUADIR (LUA_PATH)   : ${LUADIR}")
@@ -99,6 +100,10 @@ INCLUDE(TorchPathsInit)
 INCLUDE(TorchPackage)
 INCLUDE(TorchWrap)
 INCLUDE(TorchExports)
+
+message(STATUS "Torch_INSTALL_PREFIX                : ${Torch_INSTALL_PREFIX}")
+message(STATUS "Torch_INSTALL_BIN_SUBDIR            : ${Torch_INSTALL_BIN_SUBDIR}")
+
 
 # Torch libraries
 ADD_SUBDIRECTORY(lib)

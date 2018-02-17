@@ -64,6 +64,10 @@ else()
 
 endif()
 
+get_filename_component(LUA_BINDIR
+  ${LUA_EXE}
+  DIRECTORY)
+
 # LUA_LIBDIR - place where lua native libraries exist
 get_filename_component(LUA_LIBDIR
   ${LUA_LIBRARIES}
