@@ -52,7 +52,7 @@ IMPLEMENT_TORCH_FILE_FUNC(seekEnd)
 static int torch_File_position(lua_State *L)
 {
   THFile *self = luaT_checkudata(L, 1, "torch.File");
-  lua_pushnumber(L, THFile_position(self)+1);
+  lua_pushinteger(L, THFile_position(self)+1);
   return 1;
 }
 
@@ -73,8 +73,8 @@ IMPLEMENT_TORCH_FILE_FUNC(close)
     {                                                                   \
       if(lua_isnumber(L, 2))                                            \
       {                                                                 \
-        ptrdiff_t size = lua_tonumber(L, 2);                                 \
-        ptrdiff_t nread;                                                     \
+        ptrdiff_t size = lua_tointeger(L, 2);                           \
+        ptrdiff_t nread;                                                \
                                                                         \
         TH##TYPEC##Storage *storage = TH##TYPEC##Storage_newWithSize(size); \
         luaT_pushudata(L, storage, "torch." #TYPEC "Storage");          \
@@ -104,14 +104,14 @@ IMPLEMENT_TORCH_FILE_FUNC(close)
     {                                                                   \
       if(lua_isnumber(L, 2))                                            \
       {                                                                 \
-        TYPE value = lua_tonumber(L, 2);                                \
-        THFile_write##TYPEC##Scalar(self, (TYPE)value);                 \
+        TYPE value = (TYPE) lua_tonumber(L, 2);                         \
+        THFile_write##TYPEC##Scalar(self, value);                       \
         return 0;                                                       \
       }                                                                 \
       else if(luaT_toudata(L, 2, "torch." #TYPEC "Storage"))            \
       {                                                                 \
         TH##TYPEC##Storage *storage = luaT_toudata(L, 2, "torch." #TYPEC "Storage"); \
-        lua_pushnumber(L, THFile_write##TYPEC(self, storage));          \
+        lua_pushnumber(L, (lua_Number) THFile_write##TYPEC(self, storage));          \
         return 1;                                                       \
       }                                                                 \
     }                                                                   \
@@ -120,12 +120,73 @@ IMPLEMENT_TORCH_FILE_FUNC(close)
     return 0;                                                           \
   }
 
+#define IMPLEMENT_TORCH_FILE_RW_INTEGER(TYPEC, TYPE)                    \
+  static int torch_File_read##TYPEC(lua_State *L)                       \
+  {                                                                     \
+    THFile *self = luaT_checkudata(L, 1, "torch.File");                 \
+    int narg = lua_gettop(L);                                           \
+                                                                        \
+    if(narg == 1)                                                       \
+    {                                                                   \
+      lua_pushinteger(L, THFile_read##TYPEC##Scalar(self));             \
+      return 1;                                                         \
+    }                                                                   \
+    else if(narg == 2)                                                  \
+    {                                                                   \
+      if(lua_isinteger(L, 2))                                           \
+      {                                                                 \
+        ptrdiff_t size = lua_tointeger(L, 2);                           \
+        ptrdiff_t nread;                                                \
+                                                                        \
+        TH##TYPEC##Storage *storage = TH##TYPEC##Storage_newWithSize(size); \
+        luaT_pushudata(L, storage, "torch." #TYPEC "Storage");          \
+        nread = THFile_read##TYPEC(self, storage);                      \
+        if(nread != size)                                               \
+          TH##TYPEC##Storage_resize(storage, nread);                    \
+        return 1;                                                       \
+      }                                                                 \
+      else if(luaT_toudata(L, 2, "torch." #TYPEC "Storage"))            \
+      {                                                                 \
+        TH##TYPEC##Storage *storage = luaT_toudata(L, 2, "torch." #TYPEC "Storage"); \
+        lua_pushinteger(L, THFile_read##TYPEC(self, storage));           \
+        return 1;                                                       \
+      }                                                                 \
+    }                                                                   \
+                                                                        \
+    luaL_error(L, "nothing, number, or " #TYPEC "Storage expected");    \
+    return 0;                                                           \
+  }                                                                     \
+                                                                        \
+  static int torch_File_write##TYPEC(lua_State *L)                      \
+  {                                                                     \
+    THFile *self = luaT_checkudata(L, 1, "torch.File");                 \
+    int narg = lua_gettop(L);                                           \
+                                                                        \
+    if(narg == 2)                                                       \
+    {                                                                   \
+      if(lua_isinteger(L, 2))                                           \
+      {                                                                 \
+        TYPE value = (TYPE) lua_tointeger(L, 2);                        \
+        THFile_write##TYPEC##Scalar(self, value);                       \
+        return 0;                                                       \
+      }                                                                 \
+      else if(luaT_toudata(L, 2, "torch." #TYPEC "Storage"))            \
+      {                                                                 \
+        TH##TYPEC##Storage *storage = luaT_toudata(L, 2, "torch." #TYPEC "Storage"); \
+        lua_pushinteger(L, THFile_write##TYPEC(self, storage));         \
+        return 1;                                                       \
+      }                                                                 \
+    }                                                                   \
+                                                                        \
+    luaL_error(L, "number, or " #TYPEC "Storage expected");             \
+    return 0;                                                           \
+  }
 
-IMPLEMENT_TORCH_FILE_RW(Byte, unsigned char)
-IMPLEMENT_TORCH_FILE_RW(Char, char)
-IMPLEMENT_TORCH_FILE_RW(Short, short)
-IMPLEMENT_TORCH_FILE_RW(Int, int)
-IMPLEMENT_TORCH_FILE_RW(Long, long)
+IMPLEMENT_TORCH_FILE_RW_INTEGER(Byte, uint8_t)
+IMPLEMENT_TORCH_FILE_RW_INTEGER(Char, int8_t)
+IMPLEMENT_TORCH_FILE_RW_INTEGER(Short, int16_t)
+IMPLEMENT_TORCH_FILE_RW_INTEGER(Int, int32_t)
+IMPLEMENT_TORCH_FILE_RW_INTEGER(Long, int64_t)
 IMPLEMENT_TORCH_FILE_RW(Float, float)
 IMPLEMENT_TORCH_FILE_RW(Double, double)
 

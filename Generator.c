@@ -19,7 +19,7 @@ static int torch_Generator_write(lua_State *L)
   THGenerator *gen = luaT_checkudata(L, 1, torch_Generator);
   THFile *file = luaT_checkudata(L, 2, "torch.File");
 
-  THFile_writeByteRaw(file, (unsigned char *)gen, sizeof(THGenerator));
+  THFile_writeByteRaw(file, (unsigned char *)gen, sizeof(THGeneratorState)); //Write the state only
   return 0;
 }
 
@@ -28,7 +28,7 @@ static int torch_Generator_read(lua_State *L)
   THGenerator *gen = luaT_checkudata(L, 1, torch_Generator);
   THFile *file = luaT_checkudata(L, 2, "torch.File");
 
-  THFile_readByteRaw(file, (unsigned char *)gen, sizeof(THGenerator));
+  THFile_readByteRaw(file, (unsigned char *)gen, sizeof(THGeneratorState)); //Read back the state only
   return 0;
 }
 

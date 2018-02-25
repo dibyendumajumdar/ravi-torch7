@@ -17,13 +17,13 @@ for _,name in ipairs({"seed", "initialSeed"}) do
    interface:wrap(name,
                   string.format("THRandom_%s",name),
                   {{name='Generator', default=true},
-                   {name="long", creturned=true}})
+                   {name="int64_t", creturned=true}})
 end
 
 interface:wrap('manualSeed',
                'THRandom_manualSeed',
                {{name='Generator', default=true},
-                {name="long"}})
+                {name="int64_t"}})
 
 interface:wrap('getRNGState',
                 'THByteTensor_getRNGState',

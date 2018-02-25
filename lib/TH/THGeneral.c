@@ -21,6 +21,13 @@
 #include <malloc/malloc.h>
 #endif
 
+#ifdef TH_BLAS_MKL
+// this is the C prototype, while mkl_set_num_threads is the fortran prototype
+extern void MKL_Set_Num_Threads(int);
+// this is the C prototype, while mkl_get_max_threads is the fortran prototype
+extern int  MKL_Get_Max_Threads(void);
+#endif
+
 /* Torch Error Handling */
 static void defaultErrorHandlerFunction(const char *msg, void *data)
 {
@@ -52,6 +59,7 @@ void _THError(const char *file, const int line, const char *fmt, ...)
     (*threadErrorHandler)(msg, threadErrorHandlerData);
   else
     (*defaultErrorHandler)(msg, defaultErrorHandlerData);
+  TH_UNREACHABLE;
 }
 
 void _THAssertionFailed(const char *file, const int line, const char *exp, const char *fmt, ...) {
@@ -113,6 +121,7 @@ void _THArgCheck(const char *file, int line, int condition, int argNumber, const
       (*threadArgErrorHandler)(argNumber, msg, threadArgErrorHandlerData);
     else
       (*defaultArgErrorHandler)(argNumber, msg, defaultArgErrorHandlerData);
+    TH_UNREACHABLE;
   }
 }
 
@@ -133,13 +142,6 @@ void THSetDefaultArgErrorHandler(THArgErrorHandlerFunction new_handler, void *da
 
 static __thread void (*torchGCFunction)(void *data) = NULL;
 static __thread void *torchGCData;
-static ptrdiff_t heapSize = 0;
-static __thread ptrdiff_t heapDelta = 0;
-static const ptrdiff_t heapMaxDelta = (ptrdiff_t)1e6; // limit to +/- 1MB before updating heapSize
-static const ptrdiff_t heapMinDelta = (ptrdiff_t)-1e6;
-static __thread ptrdiff_t heapSoftmax = (ptrdiff_t)3e8; // 300MB, adjusted upward dynamically
-static const double heapSoftmaxGrowthThresh = 0.8; // grow softmax if >80% max after GC
-static const double heapSoftmaxGrowthFactor = 1.4; // grow softmax by 40%
 
 /* Optional hook for integrating with a garbage-collected frontend.
  *
@@ -170,59 +172,6 @@ static ptrdiff_t getAllocSize(void *ptr) {
 #endif
 }
 
-static ptrdiff_t applyHeapDelta() {
-  ptrdiff_t oldHeapSize = THAtomicAddPtrdiff(&heapSize, heapDelta);
-#ifdef DEBUG
-  if (heapDelta > 0 && oldHeapSize > PTRDIFF_MAX - heapDelta)
-    THError("applyHeapDelta: heapSize(%td) + increased(%td) > PTRDIFF_MAX, heapSize overflow!", oldHeapSize, heapDelta);
-  if (heapDelta < 0 && oldHeapSize < PTRDIFF_MIN - heapDelta)
-    THError("applyHeapDelta: heapSize(%td) + decreased(%td) < PTRDIFF_MIN, heapSize underflow!", oldHeapSize, heapDelta);
-#endif
-  ptrdiff_t newHeapSize = oldHeapSize + heapDelta;
-  heapDelta = 0;
-  return newHeapSize;
-}
-
-/* (1) if the torch-allocated heap size exceeds the soft max, run GC
- * (2) if post-GC heap size exceeds 80% of the soft max, increase the
- *     soft max by 40%
- */
-static void maybeTriggerGC(ptrdiff_t curHeapSize) {
-  if (torchGCFunction && curHeapSize > heapSoftmax) {
-    torchGCFunction(torchGCData);
-
-    // ensure heapSize is accurate before updating heapSoftmax
-    ptrdiff_t newHeapSize = applyHeapDelta();
-
-    if (newHeapSize > heapSoftmax * heapSoftmaxGrowthThresh) {
-      heapSoftmax = (ptrdiff_t)(heapSoftmax * heapSoftmaxGrowthFactor);
-    }
-  }
-}
-
-// hooks into the TH heap tracking
-void THHeapUpdate(ptrdiff_t size) {
-#ifdef DEBUG
-  if (size > 0 && heapDelta > PTRDIFF_MAX - size)
-    THError("THHeapUpdate: heapDelta(%td) + increased(%td) > PTRDIFF_MAX, heapDelta overflow!", heapDelta, size);
-  if (size < 0 && heapDelta < PTRDIFF_MIN - size)
-    THError("THHeapUpdate: heapDelta(%td) + decreased(%td) < PTRDIFF_MIN, heapDelta underflow!", heapDelta, size);
-#endif
-
-  heapDelta += size;
-
-  // batch updates to global heapSize to minimize thread contention
-  if (heapDelta < heapMaxDelta && heapDelta > heapMinDelta) {
-    return;
-  }
-
-  ptrdiff_t newHeapSize = applyHeapDelta();
-
-  if (size > 0) {
-    maybeTriggerGC(newHeapSize);
-  }
-}
-
 static void* THAllocInternal(ptrdiff_t size)
 {
   void *ptr;
@@ -245,7 +194,6 @@ static void* THAllocInternal(ptrdiff_t size)
     ptr = malloc(size);
   }
 
-  THHeapUpdate(getAllocSize(ptr));
   return ptr;
 }
 
@@ -286,7 +234,6 @@ void* THRealloc(void *ptr, ptrdiff_t size)
   if(size < 0)
     THError("$ Torch: invalid memory size -- maybe an overflow?");
 
-  ptrdiff_t oldSize = -getAllocSize(ptr);
   void *newptr = realloc(ptr, size);
 
   if(!newptr && torchGCFunction) {
@@ -297,15 +244,11 @@ void* THRealloc(void *ptr, ptrdiff_t size)
   if(!newptr)
     THError("$ Torch: not enough memory: you tried to reallocate %dGB. Buy new RAM!", size/1073741824);
 
-  // update heapSize only after successfully reallocated
-  THHeapUpdate(oldSize + getAllocSize(newptr));
-
   return newptr;
 }
 
 void THFree(void *ptr)
 {
-  THHeapUpdate(-getAllocSize(ptr));
   free(ptr);
 }
 
@@ -319,11 +262,20 @@ double THLog1p(const double x)
 #endif
 }
 
+double THExpm1(const double x)
+{
+  return expm1(x);
+}
+
 void THSetNumThreads(int num_threads)
 {
 #ifdef _OPENMP
   omp_set_num_threads(num_threads);
 #endif
+#ifdef TH_BLAS_MKL
+  MKL_Set_Num_Threads(num_threads);
+#endif
+
 }
 
 int THGetNumThreads(void)
@@ -344,10 +296,6 @@ int THGetNumCores(void)
 #endif
 }
 
-#ifdef TH_BLAS_MKL
-extern int mkl_get_max_threads(void);
-#endif
-
 TH_API void THInferNumThreads(void)
 {
 #if defined(_OPENMP) && defined(TH_BLAS_MKL)
@@ -355,29 +303,30 @@ TH_API void THInferNumThreads(void)
   // Otherwise, MKL and our OpenMP-enabled functions will keep changing the
   // size of the OpenMP thread pool, resulting in worse performance (and memory
   // leaks in GCC 5.4)
-  omp_set_num_threads(mkl_get_max_threads());
+  omp_set_num_threads(MKL_Get_Max_Threads());
 #endif
 }
 
-TH_API THDescBuff _THSizeDesc(const long *size, const long ndim) {
+TH_API THDescBuff _THSizeDesc(const int64_t *size, const int64_t ndim) {
   const int L = TH_DESC_BUFF_LEN;
   THDescBuff buf;
   char *str = buf.str;
-  int n = 0;
+  int i, n = 0;
   n += snprintf(str, L-n, "[");
-  int i;
-  for(i = 0; i < ndim; i++) {
-    if(n >= L) break;
-    n += snprintf(str+n, L-n, "%ld", size[i]);
-    if(i < ndim-1) {
+
+  for (i = 0; i < ndim; i++) {
+    if (n >= L) break;
+    n += snprintf(str+n, L-n, "%" PRId64, size[i]);
+    if (i < ndim-1) {
       n += snprintf(str+n, L-n, " x ");
     }
   }
-  if(n < L - 2) {
+
+  if (n < L - 2) {
     snprintf(str+n, L-n, "]");
   } else {
     snprintf(str+L-5, 5, "...]");
   }
+
   return buf;
 }
-

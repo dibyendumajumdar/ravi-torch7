@@ -38,7 +38,7 @@ else()
   )
 
   find_program(LUA_EXE
-    NAMES ravi
+    NAMES ravi_s
     PATHS
     c:/Software/ravi/bin
     ~/ravi/bin

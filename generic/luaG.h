@@ -37,13 +37,13 @@ static real luaG_(checkreal)(lua_State *L, int idx) {
         int type = lua_type(L, idx);
         if (type == LUA_TSTRING) {
           const char *str = lua_tolstring(L, idx, NULL);
-          long int num = strtol(str, NULL, 0);
+          lua_Integer num = strtoll(str, NULL, 0);
           return (real) num;
         } else {
 #if LUA_VERSION_NUM < 503
-          return (lua_Number)luaL_checkinteger(L, idx);
+          return (real)luaL_checkinteger(L, idx);
 #else
-          return (lua_Integer)luaL_checkinteger(L, idx);
+          return (real)luaL_checkinteger(L, idx);
 #endif
         }
 #else
@@ -55,7 +55,7 @@ static real luaG_(optreal)(lua_State *L, int idx, real n) {
 #if defined(TH_REAL_IS_HALF) || defined(TH_REAL_IS_FLOAT) || defined(TH_REAL_IS_DOUBLE) || LUA_VERSION_NUM < 503
   return LUA_NUMBER_TO_REAL(luaL_optnumber(L, idx, REAL_TO_LUA_NUMBER(n)));
 #elif defined(TH_REAL_IS_BYTE) || defined(TH_REAL_IS_CHAR) || defined(TH_REAL_IS_SHORT) || defined(TH_REAL_IS_INT) || defined(TH_REAL_IS_LONG)
-	return (lua_Integer)luaL_optinteger(L, idx, (lua_Integer)n);
+	return (real)luaL_optinteger(L, idx, (lua_Integer)n);
 #else
 	#error "unhandled real type in luaG_checkreal"
 #endif

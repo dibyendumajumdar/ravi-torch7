@@ -32,7 +32,7 @@ argtypes.index = {
    declare = function(arg)
                 -- if it is a number we initialize here
                 local default = tonumber(interpretdefaultvalue(arg)) or 1
-                return string.format("long arg%d = %d;", arg.i, tonumber(default)-1)
+                return string.format("lua_Integer arg%d = %d;", arg.i, tonumber(default)-1)
            end,
 
    check = function(arg, idx)
@@ -40,7 +40,7 @@ argtypes.index = {
            end,
 
    read = function(arg, idx)
-             return string.format("arg%d = (long)lua_tonumber(L, %d)-1;", arg.i, idx)
+             return string.format("arg%d = (lua_Integer)lua_tointeger(L, %d)-1;", arg.i, idx)
           end,
 
    init = function(arg)
@@ -74,7 +74,7 @@ argtypes.index = {
               end
 }
 
-for _,typename in ipairs({"real", "unsigned char", "char", "short", "int", "long", "float", "double"}) do
+for _,typename in ipairs({"real", "float", "double"}) do
    argtypes[typename] = {
 
       helpname = function(arg)
@@ -127,7 +127,64 @@ for _,typename in ipairs({"real", "unsigned char", "char", "short", "int", "long
    }
 end
 
-argtypes.byte = argtypes['unsigned char']
+for _,typename in ipairs({"uint8_t", "int8_t", "int16_t", "int32_t", "int64_t"}) do
+   argtypes[typename] = {
+
+      helpname = function(arg)
+                    return typename
+                 end,
+
+      declare = function(arg)
+                   -- if it is a number we initialize here
+                   local default = tonumber(interpretdefaultvalue(arg)) or 0
+                   return string.format("%s arg%d = %g;", typename, arg.i, default)
+                end,
+
+      check = function(arg, idx)
+                 return string.format("lua_isinteger(L, %d)", idx)
+              end,
+
+      read = function(arg, idx)
+                return string.format("arg%d = (%s)lua_tointeger(L, %d);", arg.i, typename, idx)
+             end,
+
+      init = function(arg)
+                -- otherwise do it here
+                if arg.default then
+                   local default = interpretdefaultvalue(arg)
+                   if not tonumber(default) then
+                      return string.format("arg%d = %s;", arg.i, default)
+                   end
+                end
+             end,
+      
+      carg = function(arg)
+                return string.format('arg%d', arg.i)
+             end,
+
+      creturn = function(arg)
+                   return string.format('arg%d', arg.i)
+                end,
+      
+      precall = function(arg)
+                   if arg.returned then
+                      return string.format('lua_pushinteger(L, (lua_Integer)arg%d);', arg.i)
+                   end
+                end,
+      
+      postcall = function(arg)
+                    if arg.creturned then
+                       return string.format('lua_pushinteger(L, (lua_Integer)arg%d);', arg.i)
+                    end
+                 end
+   }
+end
+
+argtypes['byte'] = argtypes['uint8_t']
+argtypes['char'] = argtypes['int8_t']
+argtypes['unsigned char'] = argtypes['uint8_t']
+argtypes['int'] = argtypes['int32_t']
+argtypes['long'] = argtypes['int64_t']
 
 argtypes.boolean = {
 

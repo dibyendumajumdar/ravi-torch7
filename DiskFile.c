@@ -57,7 +57,7 @@ static int torch_DiskFile_bigEndianEncoding(lua_State *L)
 static int torch_DiskFile_longSize(lua_State *L)
 {
   THFile *self = luaT_checkudata(L, 1, "torch.DiskFile");
-  THDiskFile_longSize(self, lua_tointeger(L, 2));
+  THDiskFile_longSize(self, (int)lua_tointeger(L, 2));
   lua_settop(L, 1);
   return 1;
 }

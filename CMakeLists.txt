@@ -14,15 +14,18 @@ SET(CMAKE_MODULE_PATH
 
 find_package(Lua REQUIRED)
 
-message(STATUS "LUA_INCLUDE_DIR: ${LUA_INCLUDE_DIR}")
-message(STATUS "LUA_LIBRARIES  : ${LUA_LIBRARIES}")
+## The various Torch paths are all derived from
+## Lua paths. See TorchPaths.cmake 
 
-message(STATUS "LUA_INCDIR     : ${LUA_INCDIR}")
-message(STATUS "LUA_LIBDIR     : ${LUA_LIBDIR}")
-message(STATUS "LUA_BINDIR     : ${LUA_BINDIR}")
-message(STATUS "LUALIB         : ${LUALIB}")
-message(STATUS "LIBDIR (LUA_CPATH)  : ${LIBDIR}")
-message(STATUS "LUADIR (LUA_PATH)   : ${LUADIR}")
+message(STATUS "LUA_INCLUDE_DIR: ${LUA_INCLUDE_DIR}")     # Lua header files
+message(STATUS "LUA_LIBRARIES  : ${LUA_LIBRARIES}")       # Libraries that will be passed to linker
+
+message(STATUS "LUA_INCDIR     : ${LUA_INCDIR}")          # Lua header files
+message(STATUS "LUA_LIBDIR     : ${LUA_LIBDIR}")          # Directory where linker must look for libraries
+message(STATUS "LUA_BINDIR     : ${LUA_BINDIR}")          # Path where Lua executable lives
+message(STATUS "LUALIB         : ${LUALIB}")              # Same as LUA_LIBRARIES
+message(STATUS "LIBDIR (LUA_CPATH)  : ${LIBDIR}")         # LUA_CPATH
+message(STATUS "LUADIR (LUA_PATH)   : ${LUADIR}")         # LUA_PATH
 
 IF (NOT MSVC)
   IF (MINGW)

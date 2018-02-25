@@ -349,12 +349,12 @@ void *luaT_checkudata(lua_State *L, int ud, const char *tname)
   return p;
 }
 
-void luaT_pushlong(lua_State *L, long n)
+void luaT_pushlong(lua_State *L, int64_t n)
 {
 #if LUA_VERSION_NUM >= 503
   /* Only push the value as an integer if it fits in lua_Integer,
    or if the lua_Number representation will be even worse */
-  if (sizeof(lua_Integer) >= sizeof(long) || sizeof(lua_Number) <= sizeof(lua_Integer)) {
+  if (sizeof(lua_Integer) >= sizeof(int64_t) || sizeof(lua_Number) <= sizeof(lua_Integer)) {
     lua_pushinteger(L, n);
   } else {
     lua_pushnumber(L, (lua_Number)n);
@@ -364,29 +364,29 @@ void luaT_pushlong(lua_State *L, long n)
 #endif
 }
 
-long luaT_checklong(lua_State *L, int idx)
+int64_t luaT_checklong(lua_State *L, int idx)
 {
 #if LUA_VERSION_NUM >= 503
-  if (sizeof(lua_Integer) >= sizeof(long) || sizeof(lua_Number) <= sizeof(lua_Integer)) {
-    return (long)luaL_checkinteger(L, idx);
+  if (sizeof(lua_Integer) >= sizeof(int64_t) || sizeof(lua_Number) <= sizeof(lua_Integer)) {
+    return (int64_t)luaL_checkinteger(L, idx);
   } else {
-    return (long)luaL_checknumber(L, idx);
+    return (int64_t)luaL_checknumber(L, idx);
   }
 #else
-  return (long)luaL_checknumber(L, idx);
+  return (int64_t)luaL_checknumber(L, idx);
 #endif
 }
 
-long luaT_tolong(lua_State *L, int idx)
+int64_t luaT_tolong(lua_State *L, int idx)
 {
 #if LUA_VERSION_NUM == 503
-  if (sizeof(lua_Integer) >= sizeof(long) || sizeof(lua_Number) <= sizeof(lua_Integer)) {
-    return (long)lua_tointeger(L, idx);
+  if (sizeof(lua_Integer) >= sizeof(int64_t) || sizeof(lua_Number) <= sizeof(lua_Integer)) {
+    return (int64_t)lua_tointeger(L, idx);
   } else {
-    return (long)lua_tonumber(L, idx);
+    return (int64_t)lua_tonumber(L, idx);
   }
 #else
-  return (long)lua_tonumber(L, idx);
+  return (int64_t)lua_tonumber(L, idx);
 #endif
 }
 

@@ -1,13 +1,18 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.0)
 
-# avoid some cmake warnings
 IF(POLICY CMP0026)
  CMAKE_POLICY(SET CMP0026 OLD)
 ENDIF()
 
-SET(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
+set(CMAKE_MODULE_PATH
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/FindCUDA
+  /usr/lib/x86_64-linux-gnu/
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/TH/cmake
+  ${CMAKE_MODULE_PATH})
 SET(CMAKE_LIBRARY_PATH /usr/lib/x86_64-linux-gnu/ ${CMAKE_LIBRARY_PATH})
 
+cmake_policy(SET CMP0012 NEW)
 # Can be compiled standalone
 IF(NOT TH_INSTALL_BIN_SUBDIR
     OR NOT TH_INSTALL_LIB_SUBDIR
@@ -45,23 +50,86 @@ ENDIF()
 ##### flags section
 ######################################################################
 
-IF(MSVC)
-  # MSVC now supports C99 since VS2013/VS2015, however the standard version switch is not provided yet
-  # SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /std:c99")
-ELSE(MSVC)
-  # enable gnu99 and not c99 because we use
-  # gnu extensions like posix_memalign
-  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99")
-ENDIF(MSVC)
+IF(NOT MSVC)
+  set(CMAKE_CXX_FLAGS "--std=c++11 -Wall -Wno-unknown-pragmas -Wno-vla -fexceptions ${CMAKE_CXX_FLAGS}")
+  set(CMAKE_C_FLAGS "-fexceptions ${CMAKE_C_FLAGS}")
+ENDIF(NOT MSVC)
+
+
+# Top-level build config
+############################################
+# Flags
+# When using MSVC
+
+# Detect CUDA architecture and get best NVCC flags
+# finding cuda must be first because other things depend on the result
+IF(NOT CUDA_FOUND)
+  FIND_PACKAGE(CUDA 5.5)
+ENDIF()
 
 IF(MSVC)
-  ADD_DEFINITIONS(-D_CRT_SECURE_NO_DEPRECATE=1)  # respect the standard
+  # we want to respect the standard, and we are bored of those **** .
+  ADD_DEFINITIONS(-D_CRT_SECURE_NO_DEPRECATE=1)
+  LIST(APPEND CUDA_NVCC_FLAGS "-Xcompiler /wd4819 -Xcompiler /wd4503")
+  ADD_DEFINITIONS(-DTH_EXPORTS)
+  IF (NOT NO_CUDA)
+    ADD_DEFINITIONS(-DTHC_EXPORTS)
+  ENDIF()
 ENDIF(MSVC)
 
-IF(UNIX)
-  # prevent Unknown CMake command "check_function_exists".
-  INCLUDE(CheckFunctionExists)
-ENDIF(UNIX)
+IF (NOT MSVC)
+  IF (CMAKE_VERSION VERSION_LESS "3.1")
+    SET(CMAKE_C_FLAGS "-std=c11 ${CMAKE_C_FLAGS}")
+  ELSE ()
+    SET(CMAKE_C_STANDARD 11)
+  ENDIF ()
+ENDIF(NOT MSVC)
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "4.9")
+    if(CUDA_VERSION VERSION_LESS "8.0")
+      MESSAGE(STATUS "Found gcc >=5 and CUDA <= 7.5, adding workaround C++ flags")
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_FORCE_INLINES -D_MWAITXINTRIN_H_INCLUDED -D__STRICT_ANSI__")
+    endif(CUDA_VERSION VERSION_LESS "8.0")
+  endif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "4.9")
+endif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+
+LIST(APPEND CUDA_NVCC_FLAGS -Wno-deprecated-gpu-targets)
+LIST(APPEND CUDA_NVCC_FLAGS --expt-extended-lambda)
+
+if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  SET(CMAKE_CXX_STANDARD 11)
+endif()
+
+IF(NOT COMMAND CUDA_SELECT_NVCC_ARCH_FLAGS)
+  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/cmake/select_compute_arch.cmake)
+ENDIF()
+LIST(APPEND CUDA_NVCC_FLAGS $ENV{TORCH_NVCC_FLAGS})
+CUDA_SELECT_NVCC_ARCH_FLAGS(NVCC_FLAGS_EXTRA $ENV{TORCH_CUDA_ARCH_LIST})
+LIST(APPEND CUDA_NVCC_FLAGS ${NVCC_FLAGS_EXTRA})
+IF(CMAKE_POSITION_INDEPENDENT_CODE AND NOT MSVC)
+  LIST(APPEND CUDA_NVCC_FLAGS "-Xcompiler -fPIC")
+ENDIF()
+
+IF(CUDA_HAS_FP16 OR NOT ${CUDA_VERSION} LESS 7.5)
+  MESSAGE(STATUS "Found CUDA with FP16 support, compiling with torch.CudaHalfTensor")
+  LIST(APPEND CUDA_NVCC_FLAGS "-DCUDA_HAS_FP16=1 -D__CUDA_NO_HALF_OPERATORS__")
+  SET(CMAKE_C_FLAGS "-DCUDA_HAS_FP16=1 ${CMAKE_C_FLAGS}")
+ELSE(CUDA_HAS_FP16 OR NOT ${CUDA_VERSION} LESS 7.5)
+  MESSAGE(STATUS "Could not find CUDA with FP16 support, compiling without torch.CudaHalfTensor")
+ENDIF(CUDA_HAS_FP16 OR NOT ${CUDA_VERSION} LESS 7.5)
+
+OPTION(NDEBUG "disable asserts (WARNING: this may result in silent UB e.g. with out-of-bound indices)")
+IF(NOT NDEBUG)
+  MESSAGE(STATUS "Removing -DNDEBUG from compile flags")
+  STRING(REPLACE "-DNDEBUG" "" CMAKE_C_FLAGS "" ${CMAKE_C_FLAGS})
+  STRING(REPLACE "-DNDEBUG" "" CMAKE_C_FLAGS_DEBUG "" ${CMAKE_C_FLAGS_DEBUG})
+  STRING(REPLACE "-DNDEBUG" "" CMAKE_C_FLAGS_RELEASE "" ${CMAKE_C_FLAGS_RELEASE})
+  STRING(REPLACE "-DNDEBUG" "" CMAKE_CXX_FLAGS "" ${CMAKE_CXX_FLAGS})
+  STRING(REPLACE "-DNDEBUG" "" CMAKE_CXX_FLAGS_DEBUG "" ${CMAKE_CXX_FLAGS_DEBUG})
+  STRING(REPLACE "-DNDEBUG" "" CMAKE_CXX_FLAGS_RELEASE "" ${CMAKE_CXX_FLAGS_RELEASE})
+ENDIF()
+
 
 # OpenMP support?
 SET(WITH_OPENMP ON CACHE BOOL "OpenMP support if available?")
@@ -82,15 +150,46 @@ IF (APPLE AND CMAKE_COMPILER_IS_GNUCC)
   ENDIF ()
 ENDIF ()
 
-IF (WITH_OPENMP)
+IF (WITH_OPENMP AND NOT CHECKED_OPENMP)
   FIND_PACKAGE(OpenMP)
-  IF(OPENMP_FOUND)
-    MESSAGE(STATUS "Compiling with OpenMP support")
-    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-    SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
-  ENDIF(OPENMP_FOUND)
-ENDIF (WITH_OPENMP)
+  SET(CHECKED_OPENMP ON CACHE BOOL "already checked for OpenMP")
+
+  # OPENMP_FOUND is not cached in FindOpenMP.cmake (all other variables are cached)
+  # see https://github.com/Kitware/CMake/blob/master/Modules/FindOpenMP.cmake
+  SET(OPENMP_FOUND ${OPENMP_FOUND} CACHE BOOL "OpenMP Support found")
+ENDIF (WITH_OPENMP AND NOT CHECKED_OPENMP)
+
+IF(OPENMP_FOUND)
+  MESSAGE(STATUS "Compiling with OpenMP support")
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+ENDIF(OPENMP_FOUND)
+
+
+SET(CUDA_ATTACH_VS_BUILD_RULE_TO_CUDA_FILE OFF)
+
+FIND_PACKAGE(MAGMA)
+IF(CUDA_FOUND AND MAGMA_FOUND)
+  INCLUDE_DIRECTORIES("${MAGMA_INCLUDE_DIR}")
+  SET(CMAKE_REQUIRED_INCLUDES "${MAGMA_INCLUDE_DIR};${CUDA_INCLUDE_DIRS}")
+  INCLUDE(CheckPrototypeDefinition)
+  check_prototype_definition(magma_get_sgeqrf_nb
+   "magma_int_t magma_get_sgeqrf_nb( magma_int_t m, magma_int_t n );"
+   "0"
+   "magma.h"
+    MAGMA_V2)
+  IF (MAGMA_V2)
+    add_definitions(-DMAGMA_V2)
+  ENDIF (MAGMA_V2)
+
+  SET(USE_MAGMA 1)
+  MESSAGE(STATUS "Compiling with MAGMA support")
+  MESSAGE(STATUS "MAGMA INCLUDE DIRECTORIES: ${MAGMA_INCLUDE_DIR}")
+  MESSAGE(STATUS "MAGMA LIBRARIES: ${MAGMA_LIBRARIES}")
+  MESSAGE(STATUS "MAGMA V2 check: ${MAGMA_V2}")
+ELSE()
+  MESSAGE(STATUS "MAGMA not found. Compiling without MAGMA support")
+ENDIF()
 
 # ARM specific flags
 FIND_PACKAGE(ARM)
@@ -110,8 +209,33 @@ IF (CORTEXA9_FOUND)
   SET(CMAKE_C_FLAGS "-mcpu=cortex-a9 ${CMAKE_C_FLAGS}")
 ENDIF (CORTEXA9_FOUND)
 
+IF(UNIX)
+  # prevent Unknown CMake command "check_function_exists".
+  INCLUDE(CheckFunctionExists)
+ENDIF(UNIX)
+
 INCLUDE (CheckIncludeFile)
 INCLUDE (CheckCSourceCompiles)
+INCLUDE (CheckCSourceRuns)
+
+# Check that our programs run.  This is different from the native CMake compiler
+# check, which just tests if the program compiles and links.  This is important
+# because with ASAN you might need to help the compiled library find some
+# dynamic libraries.
+CHECK_C_SOURCE_RUNS("
+int main() { return 0; }
+" COMPILER_WORKS)
+IF(NOT COMPILER_WORKS)
+  # Force cmake to retest next time around
+  unset(COMPILER_WORKS CACHE)
+  MESSAGE(FATAL_ERROR
+      "Could not run a simple program built with your compiler. "
+      "If you are trying to use -fsanitize=address, make sure "
+      "libasan is properly installed on your system (you can confirm "
+      "if the problem is this by attempting to build and run a "
+      "small program.)")
+ENDIF()
+
 CHECK_INCLUDE_FILE(cpuid.h HAVE_CPUID_H)
 # Check for a cpuid intrinsic
 IF(HAVE_CPUID_H)
@@ -144,16 +268,20 @@ IF(NOT NO_GCC_EBX_FPIC_BUG)
   SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUSE_GCC_GET_CPUID")
 ENDIF(NOT NO_GCC_EBX_FPIC_BUG)
 
-
 FIND_PACKAGE(SSE) # checks SSE, AVX and AVX2
 IF(C_SSE2_FOUND)
   MESSAGE(STATUS "SSE2 Found")
   SET(CMAKE_C_FLAGS "${C_SSE2_FLAGS} -DUSE_SSE2 ${CMAKE_C_FLAGS}")
 ENDIF(C_SSE2_FOUND)
+IF(C_SSE4_1_FOUND AND C_SSE4_2_FOUND)
+  SET(CMAKE_C_FLAGS "${C_SSE4_1_FLAGS} -DUSE_SSE4_1 ${C_SSE4_2_FLAGS} -DUSE_SSE4_2 ${CMAKE_C_FLAGS}")
+ENDIF()
 IF(C_SSE3_FOUND)
   MESSAGE(STATUS "SSE3 Found")
   SET(CMAKE_C_FLAGS "${C_SSE3_FLAGS} -DUSE_SSE3 ${CMAKE_C_FLAGS}")
+  SET(CMAKE_CXX_FLAGS "${C_SSE3_FLAGS} -DUSE_SSE3 ${CMAKE_CXX_FLAGS}")
 ENDIF(C_SSE3_FOUND)
+
 # we don't set -mavx and -mavx2 flags globally, but only for specific files
 # however, we want to enable the AVX codepaths, so we still need to
 # add USE_AVX and USE_AVX2 macro defines
@@ -164,10 +292,17 @@ ENDIF(C_AVX_FOUND)
 IF(C_AVX2_FOUND)
   MESSAGE(STATUS "AVX2 Found")
   SET(CMAKE_C_FLAGS "-DUSE_AVX2 ${CMAKE_C_FLAGS}")
+  SET(CMAKE_CXX_FLAGS "-DUSE_AVX2 ${CMAKE_CXX_FLAGS}")
 ENDIF(C_AVX2_FOUND)
 
 CHECK_C_SOURCE_RUNS("
 #include <stdatomic.h>
+// ATOMIC_INT_LOCK_FREE is flaky on some older gcc versions
+// so if this define is not usable a preprocessor definition
+// we fail this check and fall back to GCC atomics
+#if ATOMIC_INT_LOCK_FREE == 2
+#define TH_ATOMIC_IPC_REFCOUNT 1
+#endif
 int main()
 {
   int a;
@@ -212,9 +347,9 @@ ENDIF()
 ##### sources section
 ######################################################################
 
-# IF ANY SIMD FOUND
+set(extra_src)
 IF(C_AVX2_FOUND OR C_AVX_FOUND OR C_SSE4_2_FOUND OR C_SSE4_1_FOUND)
-  SET(simd generic/simd/convolve.c)
+  LIST(APPEND extra_src ${CMAKE_CURRENT_SOURCE_DIR}/generic/simd/convolve.c)
 ENDIF(C_AVX2_FOUND OR C_AVX_FOUND OR C_SSE4_2_FOUND OR C_SSE4_1_FOUND)
 
 # IF SSE4 FOUND
@@ -225,28 +360,29 @@ IF(C_SSE4_1_FOUND AND C_SSE4_2_FOUND)
   ELSE(MSVC)
     SET_SOURCE_FILES_PROPERTIES(generic/simd/convolve5x5_sse.c PROPERTIES COMPILE_FLAGS "-O3 -ffast-math")
   ENDIF(MSVC)
-  SET(simd ${simd} generic/simd/convolve5x5_sse.c)
+  LIST(APPEND extra_src ${CMAKE_CURRENT_SOURCE_DIR}/generic/simd/convolve5x5_sse.c)
 ENDIF(C_SSE4_1_FOUND AND C_SSE4_2_FOUND)
 
 # IF AVX FOUND
 IF(C_AVX_FOUND)
   IF(MSVC)
-    SET_SOURCE_FILES_PROPERTIES(generic/simd/convolve5x5_avx.c PROPERTIES COMPILE_FLAGS "/fp:fast ${C_AVX_FLAGS}")
-    SET_SOURCE_FILES_PROPERTIES(vector/AVX.c PROPERTIES COMPILE_FLAGS "/arch:AVX ${C_AVX_FLAGS}")
+    SET_SOURCE_FILES_PROPERTIES(${CMAKE_CURRENT_SOURCE_DIR}/generic/simd/convolve5x5_avx.c PROPERTIES COMPILE_FLAGS "/fp:fast ${C_AVX_FLAGS}")
+    SET_SOURCE_FILES_PROPERTIES(${CMAKE_CURRENT_SOURCE_DIR}/vector/AVX.c PROPERTIES COMPILE_FLAGS "/arch:AVX ${C_AVX_FLAGS}")
   ELSE(MSVC)
-    SET_SOURCE_FILES_PROPERTIES(generic/simd/convolve5x5_avx.c PROPERTIES COMPILE_FLAGS "-O3 -ffast-math ${C_AVX_FLAGS}")
-    SET_SOURCE_FILES_PROPERTIES(vector/AVX.c PROPERTIES COMPILE_FLAGS "-O3 ${C_AVX_FLAGS}")
+    SET_SOURCE_FILES_PROPERTIES(${CMAKE_CURRENT_SOURCE_DIR}/generic/simd/convolve5x5_avx.c PROPERTIES COMPILE_FLAGS "-O3 -ffast-math ${C_AVX_FLAGS}")
+    SET_SOURCE_FILES_PROPERTIES(${CMAKE_CURRENT_SOURCE_DIR}/vector/AVX.c PROPERTIES COMPILE_FLAGS "-O3 ${C_AVX_FLAGS}")
   ENDIF(MSVC)
-  SET(simd ${simd} vector/AVX.c generic/simd/convolve5x5_avx.c)
+  LIST(APPEND extra_src ${CMAKE_CURRENT_SOURCE_DIR}/vector/AVX.c)
+  LIST(APPEND extra_src ${CMAKE_CURRENT_SOURCE_DIR}/generic/simd/convolve5x5_avx.c)
 ENDIF(C_AVX_FOUND)
 
 IF(C_AVX2_FOUND)
   IF(MSVC)
-    SET_SOURCE_FILES_PROPERTIES(vector/AVX2.c PROPERTIES COMPILE_FLAGS "/arch:AVX2 ${C_AVX2_FLAGS}")
+    SET_SOURCE_FILES_PROPERTIES(${CMAKE_CURRENT_SOURCE_DIR}/vector/AVX2.cpp PROPERTIES COMPILE_FLAGS "/arch:AVX2 ${C_AVX2_FLAGS}")
   ELSE(MSVC)
-    SET_SOURCE_FILES_PROPERTIES(vector/AVX2.c PROPERTIES COMPILE_FLAGS "-O3 ${C_AVX2_FLAGS}")
+    SET_SOURCE_FILES_PROPERTIES(${CMAKE_CURRENT_SOURCE_DIR}/vector/AVX2.cpp PROPERTIES COMPILE_FLAGS "-O3 ${C_AVX2_FLAGS}")
   ENDIF(MSVC)
-  SET(simd ${simd} vector/AVX2.c)
+  LIST(APPEND extra_src ${CMAKE_CURRENT_SOURCE_DIR}/vector/AVX2.cpp)
 ENDIF(C_AVX2_FOUND)
 
 SET(hdr
@@ -254,8 +390,23 @@ SET(hdr
   THLapack.h THLogAdd.h THRandom.h THVector.h THAtomic.h )
 
 SET(src
-  THGeneral.c THHalf.c THAllocator.c THSize.c THStorage.c THTensor.c THBlas.c THLapack.c
-  THLogAdd.c THRandom.c THFile.c THDiskFile.c THMemoryFile.c THAtomic.c THVector.c)
+  ${CMAKE_CURRENT_SOURCE_DIR}/THGeneral.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/THHalf.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/THAllocator.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/THSize.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/THStorage.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/THTensor.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/THBlas.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/THLapack.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/THLogAdd.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/THRandom.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/THFile.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/THDiskFile.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/THMemoryFile.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/THAtomic.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/THVector.cpp
+  ${extra_src}
+)
 
 SET(src ${src} ${hdr} ${simd})
 
@@ -421,20 +572,21 @@ INSTALL(FILES
 INSTALL(FILES
   vector/AVX.h
   vector/AVX2.h
+  vector/avx_mathfun.h
   DESTINATION "${TH_INSTALL_INCLUDE_SUBDIR}/TH/vector")
 
 INSTALL(FILES
   generic/THBlas.c
   generic/THBlas.h
-  generic/THLapack.c
+  generic/THLapack.cpp
   generic/THLapack.h
   generic/THStorage.c
   generic/THStorage.h
   generic/THStorageCopy.c
   generic/THStorageCopy.h
-  generic/THTensor.c
+  generic/THTensor.cpp
   generic/THTensor.h
-  generic/THTensorConv.c
+  generic/THTensorConv.cpp
   generic/THTensorConv.h
   generic/THTensorCopy.c
   generic/THTensorCopy.h
@@ -442,9 +594,9 @@ INSTALL(FILES
   generic/THTensorLapack.h
   generic/THTensorMath.c
   generic/THTensorMath.h
-  generic/THTensorRandom.c
+  generic/THTensorRandom.cpp
   generic/THTensorRandom.h
-  generic/THVectorDispatch.c
+  generic/THVectorDispatch.cpp
   generic/THVector.h
   DESTINATION "${TH_INSTALL_INCLUDE_SUBDIR}/TH/generic")
 

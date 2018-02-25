@@ -301,7 +301,7 @@ for _,typename in ipairs({"ByteTensor", "CharTensor", "ShortTensor", "IntTensor"
       declare = function(arg)
                    local txt = {}
                    table.insert(txt, string.format('TH%s **arg%d_data = NULL;', typename, arg.i))
-                   table.insert(txt, string.format('long arg%d_size = 0;', arg.i))
+                   table.insert(txt, string.format('int64_t arg%d_size = 0;', arg.i))
                    table.insert(txt, string.format('int arg%d_i = 0;', arg.i))
                    return table.concat(txt, '\n')
               end,

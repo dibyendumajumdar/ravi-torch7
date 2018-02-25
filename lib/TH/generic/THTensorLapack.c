@@ -134,7 +134,7 @@ void THTensor_(gesv)(THTensor *rb_, THTensor *ra_, THTensor *b, THTensor *a)
   lda  = n;
   ldb  = n;
 
-  ipiv = THIntTensor_newWithSize1d((long)n);
+  ipiv = THIntTensor_newWithSize1d((int64_t)n);
   THLapack_(gesv)(n, nrhs,
 		  THTensor_(data)(ra__), lda, THIntTensor_data(ipiv),
 		  THTensor_(data)(rb__), ldb, &info);
@@ -259,10 +259,14 @@ void THTensor_(gels)(THTensor *rb_, THTensor *ra_, THTensor *b, THTensor *a)
                                      if (free_b) THTensor_(free)(b);),
                            "gels", info,"");
 
-  /* rb__ is currently ldb by nrhs; resize it to n by nrhs */
-  rb__->size[0] = n;
-  if (rb__ != rb_)
+  /*
+   * In the m < n case, if the input b is used as the result (so b == _rb),
+   * then rb_ was originally m by nrhs but now should be n by nrhs.
+   * This is larger than before, so we need to expose the new rows by resizing.
+   */
+  if (m < n && b == rb_) {
     THTensor_(resize2d)(rb_, n, nrhs);
+  }
 
   THTensor_(freeCopyTo)(ra__, ra_);
   THTensor_(freeCopyTo)(rb__, rb_);
@@ -276,7 +280,7 @@ void THTensor_(geev)(THTensor *re_, THTensor *rv_, THTensor *a_, const char *job
   THTensor *work, *wi, *wr, *a;
   real wkopt;
   real *rv_data;
-  long i;
+  int64_t i;
 
   THTensor *re__ = NULL;
   THTensor *rv__ = NULL;
@@ -382,6 +386,11 @@ void THTensor_(syev)(THTensor *re_, THTensor *rv_, THTensor *a, const char *jobz
                                      THTensor_(free)(re__);
                                      THTensor_(free)(work);),
                            "syev", info,"");
+
+  // No eigenvectors specified
+  if (*jobz == 'N') {
+    THTensor_(fill)(rv_, 0);
+  }
 
   THTensor_(freeCopyTo)(rv__, rv_);
   THTensor_(freeCopyTo)(re__, re_);
@@ -494,7 +503,7 @@ void THTensor_(getri)(THTensor *ra_, THTensor *a)
   m = ra__->size[0];
   n = ra__->size[1];
   lda = m;
-  ipiv = THIntTensor_newWithSize1d((long)m);
+  ipiv = THIntTensor_newWithSize1d((int64_t)m);
 
   /* Run LU */
   THLapack_(getrf)(n, n, THTensor_(data)(ra__), lda, THIntTensor_data(ipiv), &info);
@@ -530,7 +539,7 @@ void THTensor_(clearUpLoTriangle)(THTensor *a, const char *uplo)
 
   /* Build full matrix */
   real *p = THTensor_(data)(a);
-  long i, j;
+  int64_t i, j;
 
   /* Upper Triangular Case */
   if (uplo[0] == 'U')
@@ -563,7 +572,7 @@ void THTensor_(copyUpLoTriangle)(THTensor *a, const char *uplo)
 
   /* Build full matrix */
   real *p = THTensor_(data)(a);
-  long i, j;
+  int64_t i, j;
 
   /* Upper Triangular Case */
   if (uplo[0] == 'U')
@@ -848,7 +857,6 @@ void THTensor_(orgqr)(THTensor *ra_, THTensor *a, THTensor *tau)
   ra__ = THTensor_(cloneColumnMajor)(ra_, a);
 
   int m = ra__->size[0];
-  int n = ra__->size[1];
   int k = tau->size[0];
   int lda = m;
 
@@ -955,7 +963,7 @@ void THTensor_(btrifact)(THTensor *ra_, THIntTensor *rpivots_, THIntTensor *rinf
   if (m != n) {
     THError("btrifact is only implemented for square matrices");
   }
-  long num_batches = THTensor_(size)(a, 0);
+  int64_t num_batches = THTensor_(size)(a, 0);
   THTensor *ra__;
   int lda;
 
@@ -985,7 +993,7 @@ void THTensor_(btrifact)(THTensor *ra_, THIntTensor *rpivots_, THIntTensor *rinf
 
   THIntTensor_resize2d(rpivots_, num_batches, n);
 
-  long batch = 0;
+  int64_t batch = 0;
   for (; batch < num_batches; ++batch) {
     THTensor_(select)(ai, a, 0, batch);
     THTensor_(select)(rai, ra__, 0, batch);
@@ -1031,8 +1039,8 @@ void THTensor_(btrisolve)(THTensor *rb_, THTensor *b, THTensor *atf, THIntTensor
     THTensor_(copy)(rb_, b);
   }
 
-  long num_batches = atf->size[0];
-  long n = atf->size[1];
+  int64_t num_batches = atf->size[0];
+  int64_t n = atf->size[1];
   int nrhs = rb_->nDimension > 2 ? rb_->size[2] : 1;
 
   int lda, ldb;
@@ -1087,7 +1095,7 @@ void THTensor_(btrisolve)(THTensor *rb_, THTensor *b, THTensor *atf, THIntTensor
       THError("Error: rpivots_ is not contiguous.");
   }
 
-  for (long batch = 0; batch < num_batches; ++batch) {
+  for (int64_t batch = 0; batch < num_batches; ++batch) {
     THTensor_(select)(ai, atf_, 0, batch);
     THTensor_(select)(rbi, rb__, 0, batch);
     THIntTensor_select(pivoti, pivots, 0, batch);

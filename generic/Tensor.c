@@ -46,7 +46,7 @@ static int torch_Tensor_(stride)(lua_State *L)
   else
   {
     THLongStorage *storage = THLongStorage_newWithSize(tensor->nDimension);
-    memmove(storage->data, tensor->stride, sizeof(long)*tensor->nDimension);
+    memmove(storage->data, tensor->stride, sizeof(int64_t)*tensor->nDimension);
     luaT_pushudata(L, storage, "torch.LongStorage");
   }
   return 1;
@@ -275,8 +275,8 @@ static int torch_Tensor_(narrow)(lua_State *L)
 {
   THTensor *tensor = luaT_checkudata(L, 1, torch_Tensor);
   int dimension = luaL_checkint(L, 2)-1;
-  long firstIndex = luaL_checklong(L, 3)-1;
-  long size = luaL_checklong(L, 4);
+  int64_t firstIndex = luaL_checklong(L, 3)-1;
+  int64_t size = luaL_checklong(L, 4);
 
 /*  THArgCheck( (dimension >= 0) && (dimension < tensor->nDimension), 2, "out of range");
   THArgCheck( (firstIndex >= 0) && (firstIndex < tensor->size[dimension]), 3, "out of range");
@@ -291,7 +291,7 @@ static int torch_Tensor_(narrow)(lua_State *L)
 static int torch_Tensor_(sub)(lua_State *L)
 {
   THTensor *tensor = luaT_checkudata(L, 1, torch_Tensor);
-  long d0s = -1, d0e = -1, d1s = -1, d1e = -1, d2s = -1, d2e = -1, d3s = -1, d3e = -1;
+  int64_t d0s = -1, d0e = -1, d1s = -1, d1e = -1, d2s = -1, d2e = -1, d3s = -1, d3e = -1;
 
   d0s = luaL_checklong(L, 2)-1;
   d0e = luaL_checklong(L, 3)-1;
@@ -362,7 +362,7 @@ static int torch_Tensor_(select)(lua_State *L)
 {
   THTensor *tensor = luaT_checkudata(L, 1, torch_Tensor);
   int dimension = luaL_checkint(L, 2)-1;
-  long sliceIndex = luaL_checklong(L, 3)-1;
+  int64_t sliceIndex = luaL_checklong(L, 3)-1;
 
 /*   THArgCheck(src->nDimension > 1, 1, "cannot select on a vector");
   THArgCheck((dimension >= 0) && (dimension < src->nDimension), 2, "out of range");
@@ -603,8 +603,8 @@ static int torch_Tensor_(unfold)(lua_State *L)
 {
   THTensor *tensor = luaT_checkudata(L, 1, torch_Tensor);
   int dimension = luaL_checkint(L, 2)-1;
-  long size = luaL_checklong(L, 3);
-  long step = luaL_checklong(L, 4);
+  int64_t size = luaL_checklong(L, 3);
+  int64_t step = luaL_checklong(L, 4);
 
 /*
   THArgCheck( (src->nDimension > 0), 1, "cannot unfold an empty tensor");
@@ -694,7 +694,7 @@ static int torch_Tensor_(__newindex__)(lua_State *L)
   if(lua_isnumber(L, 2))
   {
     void *src;
-    long index = luaL_checklong(L,2)-1;
+    int64_t index = luaL_checklong(L,2)-1;
     THArgCheck(tensor->nDimension > 0, 1, "empty tensor");
     if (index < 0) index = tensor->size[0] + index + 1;
 
@@ -773,7 +773,7 @@ static int torch_Tensor_(__newindex__)(lua_State *L)
 
     for(dim = 0; dim < idx->size; dim++)
     {
-      long z = idx->data[dim]-1;
+      int64_t z = idx->data[dim]-1;
       if (z < 0) z = tensor->size[dim] + z + 1;
       THArgCheck((z >= 0) && (z < tensor->size[dim]), 2, "index out of bound");
       index += z*tensor->stride[dim];
@@ -794,9 +794,9 @@ static int torch_Tensor_(__newindex__)(lua_State *L)
     for(dim = 0; dim < ndims; dim++)
     {
       lua_rawgeti(L, 2, dim+1);
-      if(lua_isnumber(L, -1))
+      if(lua_isinteger(L, -1))
       {
-        long z = lua_tonumber(L, -1)-1;
+        int64_t z = lua_tointeger(L, -1)-1;
         lua_pop(L, 1);
         if (z < 0) z = tensor->size[cdim] + z + 1;
         THArgCheck((z >= 0) && (z < tensor->size[cdim]), 2, "index out of bound");
@@ -810,11 +810,11 @@ static int torch_Tensor_(__newindex__)(lua_State *L)
       }
       else if (lua_istable(L, -1))
       {
-        long start = 0;
-        long end = tensor->size[cdim]-1;
+        int64_t start = 0;
+        int64_t end = tensor->size[cdim]-1;
         lua_rawgeti(L, -1, 1);
-        if(lua_isnumber(L, -1)) {
-          start = lua_tonumber(L, -1)-1;
+        if(lua_isinteger(L, -1)) {
+          start = lua_tointeger(L, -1)-1;
           end = start;
         }
         lua_pop(L, 1);
@@ -822,8 +822,8 @@ static int torch_Tensor_(__newindex__)(lua_State *L)
         THArgCheck((start >= 0) && (start < tensor->size[cdim]), 2, "start index out of bound");
 
         lua_rawgeti(L, -1, 2);
-        if(lua_isnumber(L, -1)) {
-          end = lua_tonumber(L, -1)-1;
+        if(lua_isinteger(L, -1)) {
+          end = lua_tointeger(L, -1)-1;
         }
         lua_pop(L, 2);
         if (end < 0) end = tensor->size[cdim] + end + 1;
@@ -906,7 +906,7 @@ static int torch_Tensor_(__index__)(lua_State *L)
 
   if(lua_isnumber(L, 2))
   {
-    long index = luaL_checklong(L,2)-1;
+    int64_t index = luaL_checklong(L,2)-1;
 
     THArgCheck(tensor->nDimension > 0, 1, "empty tensor");
     if (index < 0) index = tensor->size[0] + index + 1;
@@ -934,7 +934,7 @@ static int torch_Tensor_(__index__)(lua_State *L)
 
     for(dim = 0; dim < idx->size; dim++)
     {
-      long z = idx->data[dim]-1;
+      int64_t z = idx->data[dim]-1;
       if (z < 0) z = tensor->size[dim] + z + 1;
       THArgCheck((z >= 0) && (z < tensor->size[dim]), 2, "index out of bound");
       index += z*tensor->stride[dim];
@@ -957,9 +957,9 @@ static int torch_Tensor_(__index__)(lua_State *L)
     for(dim = 0; dim < ndims; dim++)
     {
       lua_rawgeti(L, 2, dim+1);
-      if(lua_isnumber(L, -1))
+      if(lua_isinteger(L, -1))
       {
-        long z = lua_tonumber(L, -1)-1;
+        int64_t z = lua_tointeger(L, -1)-1;
         lua_pop(L, 1);
         if (z < 0) z = tensor->size[cdim] + z + 1;
         THArgCheck((z >= 0) && (z < tensor->size[cdim]), 2, "index out of bound");
@@ -972,8 +972,8 @@ static int torch_Tensor_(__index__)(lua_State *L)
       }
       else if (lua_istable(L, -1))
       {
-        long start = 0;
-        long end = tensor->size[cdim]-1;
+        int64_t start = 0;
+        int64_t end = tensor->size[cdim]-1;
         lua_rawgeti(L, -1, 1);
         if(lua_isnumber(L, -1)) {
           start = lua_tonumber(L, -1)-1;
@@ -1278,8 +1278,8 @@ static int torch_Tensor_(read)(lua_State *L)
   THFile *file = luaT_checkudata(L, 2, "torch.File");
 
   tensor->nDimension = THFile_readIntScalar(file);
-  tensor->size = THAlloc(sizeof(long)*tensor->nDimension);
-  tensor->stride = THAlloc(sizeof(long)*tensor->nDimension);
+  tensor->size = THAlloc(sizeof(int64_t)*tensor->nDimension);
+  tensor->stride = THAlloc(sizeof(int64_t)*tensor->nDimension);
   THFile_readLongRaw(file, tensor->size, tensor->nDimension);
   THFile_readLongRaw(file, tensor->stride, tensor->nDimension);
   tensor->storageOffset = THFile_readLongScalar(file);
