@@ -107,6 +107,7 @@ INCLUDE(TorchExports)
 message(STATUS "Torch_INSTALL_PREFIX                : ${Torch_INSTALL_PREFIX}")
 message(STATUS "Torch_INSTALL_BIN_SUBDIR            : ${Torch_INSTALL_BIN_SUBDIR}")
 
+INCLUDE_DIRECTORIES("${CMAKE_CURRENT_SOURCE_DIR}/lib/TH")
 
 # Torch libraries
 ADD_SUBDIRECTORY(lib)
