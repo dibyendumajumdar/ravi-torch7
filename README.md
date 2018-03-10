@@ -1,13 +1,13 @@
-[![Join the chat at https://gitter.im/torch/torch7](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/torch/torch7?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Build Status](https://travis-ci.org/torch/torch7.svg)](https://travis-ci.org/torch/torch7)
+# Torch 7 for Ravi and Lua 5.3
 
-## Need help? ##
+This is a fork of [Torch7](http://torch.ch) library for Lua. It is 
+part of the [Ravi Distro](https://github.com/dibyendumajumdar/ravi-distro) project.
 
-* Questions, Support, Install issues: [Google groups](https://groups.google.com/forum/#!forum/torch7)
-* Reporting bugs: [torch7](https://github.com/torch/torch7/issues) [nn](https://github.com/torch/nn/issues) [cutorch](https://github.com/torch/cutorch/issues) [cunn](https://github.com/torch/cutorch/issues) [optim](https://github.com/torch/optim/issues) [threads](https://github.com/torch/threads/issues)
-* Hanging out with other developers and users (strictly no install issues, no large blobs of text): [Gitter Chat](https://gitter.im/torch/torch7)
+## Changes from Torch 7
+* The core TH implementation has been updated to sync with the version used in PyTorch.
+* As a result the implementation is more correct on Windows 64-bit where a C 'long' data type is 32-bits rather than 64-bits; the original Torch 7 code uses 'long' data type when it needs a 64-bit integer type.
+* My aim is to test the library with Lua 5.3 and Ravi. 
 
-<a name="torch.reference.dok"></a>
 # Torch Package Reference Manual #
 
 __Torch__ is the main package in [Torch7](http://torch.ch) where data
