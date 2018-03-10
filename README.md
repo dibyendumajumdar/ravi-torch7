@@ -4,7 +4,7 @@ This is a fork of [Torch7](http://torch.ch) library for Lua. It is
 part of the [Ravi Distro](https://github.com/dibyendumajumdar/ravi-distro) project.
 
 ## Changes from Torch 7
-* The core TH implementation has been updated to sync with the version used in PyTorch.
+* The core TH implementation has been updated to the version used in PyTorch.
 * As a result the implementation is more correct on Windows 64-bit where a C 'long' data type is 32-bits rather than 64-bits; the original Torch 7 code uses 'long' data type when it needs a 64-bit integer type.
 * My aim is to test the library with Lua 5.3 and Ravi. 
 
