@@ -553,7 +553,7 @@ void luaT_registeratname(lua_State *L, const struct luaL_Reg *methods, const cha
 const char* luaT_classrootname(const char *tname)
 {
   int idx;
-  int sz = strlen(tname);
+  int sz = (int) strlen(tname);
 
   for(idx = sz-1; idx >= 0 ; idx--)
   {
@@ -570,7 +570,7 @@ const char* luaT_classrootname(const char *tname)
  */
 int luaT_fullparentname(const char *tname, char *parent_name)
 {
-  int sz = strlen(tname);
+  int sz = (int) strlen(tname);
   int idx;
   for(idx = sz-1; idx > 0 ; idx--)
     if(tname[idx] == '.' || tname[idx] == '\0') break;
@@ -611,7 +611,7 @@ int luaT_outerparentname(const char *tname, char *parent_name)
  */
 int luaT_innerparentname(const char *tname, char *parent_name)
 {
-  int sz = strlen(tname);
+  int sz = (int) strlen(tname);
   int tail, head;
   for(tail = sz-1; tail >= 0 ; tail--) // tail points to
     if(tname[tail] == '.') break;      // just past IPN
