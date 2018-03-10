@@ -40,7 +40,7 @@ argtypes.index = {
            end,
 
    read = function(arg, idx)
-             return string.format("arg%d = (lua_Integer)lua_tointeger(L, %d)-1;", arg.i, idx)
+             return string.format("arg%d = (lua_Integer)lua_tonumber(L, %d)-1;", arg.i, idx)
           end,
 
    init = function(arg)
@@ -141,11 +141,11 @@ for _,typename in ipairs({"uint8_t", "int8_t", "int16_t", "int32_t", "int64_t"})
                 end,
 
       check = function(arg, idx)
-                 return string.format("lua_isinteger(L, %d)", idx)
+                 return string.format("lua_isnumber(L, %d)", idx)
               end,
 
       read = function(arg, idx)
-                return string.format("arg%d = (%s)lua_tointeger(L, %d);", arg.i, typename, idx)
+                return string.format("arg%d = (%s)lua_tonumber(L, %d);", arg.i, typename, idx)
              end,
 
       init = function(arg)
@@ -168,13 +168,13 @@ for _,typename in ipairs({"uint8_t", "int8_t", "int16_t", "int32_t", "int64_t"})
       
       precall = function(arg)
                    if arg.returned then
-                      return string.format('lua_pushinteger(L, (lua_Integer)arg%d);', arg.i)
+                      return string.format('lua_pushnumber(L, (lua_Number)arg%d);', arg.i)
                    end
                 end,
       
       postcall = function(arg)
                     if arg.creturned then
-                       return string.format('lua_pushinteger(L, (lua_Integer)arg%d);', arg.i)
+                       return string.format('lua_pushnumber(L, (lua_Number)arg%d);', arg.i)
                     end
                  end
    }
