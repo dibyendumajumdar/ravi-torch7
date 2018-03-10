@@ -32,7 +32,7 @@ argtypes.index = {
    declare = function(arg)
                 -- if it is a number we initialize here
                 local default = tonumber(interpretdefaultvalue(arg)) or 1
-                return string.format("lua_Integer arg%d = %d;", arg.i, tonumber(default)-1)
+                return string.format("int64_t arg%d = %d;", arg.i, tonumber(default)-1)
            end,
 
    check = function(arg, idx)
@@ -40,7 +40,7 @@ argtypes.index = {
            end,
 
    read = function(arg, idx)
-             return string.format("arg%d = (lua_Integer)lua_tonumber(L, %d)-1;", arg.i, idx)
+             return string.format("arg%d = (int64_t)lua_tonumber(L, %d)-1;", arg.i, idx)
           end,
 
    init = function(arg)
