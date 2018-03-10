@@ -3519,7 +3519,7 @@ void THTensor_(catArray)(THTensor *result, THTensor **inputs, int numInputs, int
   }
 
   // Compute cat_dimension based on the non-empty tensor
-  THArgCheck(dimension >= -1 && dimension < nDims, 4, "invalid dimension %d", dimension);
+  THArgCheck(dimension >= -2 && dimension < nDims, 4, "invalid dimension %d", dimension);
   // When the user input dimension is -1 (i.e. -2 in C)
   // Then we pick the last dimension across non-empty tensors.
   int cat_dimension = dimension;
@@ -3528,6 +3528,7 @@ void THTensor_(catArray)(THTensor *result, THTensor **inputs, int numInputs, int
   }
 
   THArgCheck(numInputs > 0, 3, "invalid number of inputs %d", numInputs);
+  THArgCheck(cat_dimension >= 0, 4, "invalid dimension %d", dimension + TH_INDEX_BASE);
 
   // Compute size of the result in the cat dimension
   int64_t cat_dim_size = 0;
