@@ -139,12 +139,12 @@ if(BLAS_FOUND)
   # Accelerate
   IF((NOT LAPACK_INFO) AND (BLAS_INFO STREQUAL "accelerate"))
     SET(CMAKE_REQUIRED_LIBRARIES ${BLAS_LIBRARIES})
-    check_function_exists("cheev_" ACCELERATE_LAPACK_WORKS)
-    if(ACCELERATE_LAPACK_WORKS)
+    #check_function_exists("cheev_" ACCELERATE_LAPACK_WORKS)
+    #if(ACCELERATE_LAPACK_WORKS)
       SET(LAPACK_INFO "accelerate")
-    else()
-      message(STATUS "Strangely, this Accelerate library does not support Lapack?!")
-    endif()
+    #else()
+    #  message(STATUS "Strangely, this Accelerate library does not support Lapack?!")
+    #endif()
   endif()
 
   # vecLib
