@@ -1,7 +1,5 @@
 local wrap = require 'cwrap'
 
-require 'torchcwrap'
-
 local interface = wrap.CInterface.new()
 local method = wrap.CInterface.new()
 local argtypes = wrap.CInterface.argtypes

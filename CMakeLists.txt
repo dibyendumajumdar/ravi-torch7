@@ -129,6 +129,10 @@ ADD_TORCH_WRAP(randomwrap random.lua)
 
 ADD_TORCH_PACKAGE(torch "${src}" "${luasrc}")
 
+SET(cwrapsrc)
+FILE(GLOB cwrapluasrc cwrap/*.lua)
+ADD_TORCH_PACKAGE(cwrap "${cwrapsrc}" "${cwrapluasrc}")
+
 TARGET_LINK_LIBRARIES(torch luaT TH)
 
 IF(LUALIB)
