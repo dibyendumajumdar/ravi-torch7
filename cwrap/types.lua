@@ -136,16 +136,18 @@ for _,typename in ipairs({"uint8_t", "int8_t", "int16_t", "int32_t", "int64_t"})
 
       declare = function(arg)
                    -- if it is a number we initialize here
-                   local default = tonumber(interpretdefaultvalue(arg)) or 0
+                   local default = math.tointeger(interpretdefaultvalue(arg)) or 0
                    return string.format("%s arg%d = %g;", typename, arg.i, default)
                 end,
 
       check = function(arg, idx)
+                 -- we allow floats here as in some cases e.g. torch.seed() the
+                 -- input can be floating point - we will convert to int anyway later
                  return string.format("lua_isnumber(L, %d)", idx)
               end,
 
       read = function(arg, idx)
-                return string.format("arg%d = (%s)lua_tonumber(L, %d);", arg.i, typename, idx)
+                return string.format("arg%d = (%s)lua_tointeger(L, %d);", arg.i, typename, idx)
              end,
 
       init = function(arg)
@@ -168,13 +170,13 @@ for _,typename in ipairs({"uint8_t", "int8_t", "int16_t", "int32_t", "int64_t"})
       
       precall = function(arg)
                    if arg.returned then
-                      return string.format('lua_pushnumber(L, (lua_Number)arg%d);', arg.i)
+                      return string.format('lua_pushinteger(L, (lua_Integer)arg%d);', arg.i)
                    end
                 end,
       
       postcall = function(arg)
                     if arg.creturned then
-                       return string.format('lua_pushnumber(L, (lua_Number)arg%d);', arg.i)
+                       return string.format('lua_pushinteger(L, (lua_Integer)arg%d);', arg.i)
                     end
                  end
    }
