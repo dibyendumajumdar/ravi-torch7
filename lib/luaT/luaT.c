@@ -726,6 +726,9 @@ int luaT_lua_newmetatable(lua_State *L)
     /* __typename contains the typename */
     lua_pushstring(L, tname);
     lua_setfield(L, -2, "__typename");
+	/* Also __name contains the typename */
+	lua_pushstring(L, tname);
+	lua_setfield(L, -2, "__name"); /* Ravi 5.3 */
 
     /* __metatable is self */
     lua_pushvalue(L, -1);

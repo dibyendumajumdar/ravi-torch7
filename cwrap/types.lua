@@ -1,3 +1,6 @@
+-- Here the handlng of a number of C and Torch argument types
+-- is defined
+
 local argtypes = {}
 
 local function interpretdefaultvalue(arg)
@@ -23,6 +26,9 @@ local function interpretdefaultvalue(arg)
    end   
 end
 
+-- Is this Torch Index_t? 
+-- Note the adjustment by 1 - presumably to translate from
+-- Lua array index to C index and back 
 argtypes.index = {
 
    helpname = function(arg)
@@ -239,10 +245,8 @@ argtypes.boolean = {
               end
 }
 
--- merged from torchcwrap
-local types = argtypes
-
-types.Tensor = {
+-- Following were merged from torchcwrap
+argtypes.Tensor = {
 
    helpname = function(arg)
                  if arg.dim then
@@ -330,7 +334,7 @@ types.Tensor = {
               end
 }
 
-types.Generator = {
+argtypes.Generator = {
 
    helpname = function(arg)
                  return "Generator"
@@ -371,7 +375,7 @@ types.Generator = {
               end
 }
 
-types.IndexTensor = {
+argtypes.IndexTensor = {
 
    helpname = function(arg)
                return "LongTensor"
@@ -445,7 +449,7 @@ types.IndexTensor = {
 for _,typename in ipairs({"ByteTensor", "CharTensor", "ShortTensor", "IntTensor", "LongTensor",
                           "FloatTensor", "HalfTensor", "DoubleTensor"}) do
 
-   types[typename] = {
+   argtypes[typename] = {
 
       helpname = function(arg)
                     if arg.dim then
@@ -533,7 +537,7 @@ for _,typename in ipairs({"ByteTensor", "CharTensor", "ShortTensor", "IntTensor"
                  end
    }
 
-   types[typename .. 'Array'] = {
+   argtypes[typename .. 'Array'] = {
 
       helpname = function(arg)
                     return string.format('{%s+}', typename)
@@ -596,7 +600,7 @@ for _,typename in ipairs({"ByteTensor", "CharTensor", "ShortTensor", "IntTensor"
    }
 end
 
-types.LongArg = {
+argtypes.LongArg = {
 
    vararg = true,
 
@@ -652,7 +656,7 @@ types.LongArg = {
               end
 }
 
-types.charoption = {
+argtypes.charoption = {
 
    helpname = function(arg)
                  if arg.values then
@@ -703,7 +707,7 @@ types.charoption = {
 }
 
 for _,typename in ipairs({"ptrdiff_t", "size_t"}) do
-  types[typename] =  {
+  argtypes[typename] =  {
 
   helpname = function(arg)
                 return typename
