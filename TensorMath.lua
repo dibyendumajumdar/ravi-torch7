@@ -1052,8 +1052,8 @@ static void THTensor_random1__(THTensor *self, THGenerator *gen, int64_t b)
 
    if Tensor == 'ByteTensor' then
      -- Logical accumulators only apply to ByteTensor
-      for _,name in ipairs({'all', 'any'}) do
-        wrap(name,
+      for _,name in ipairs({'AndAll', 'AnyAll'}) do
+        wrap(name == 'AndAll' and 'all' or 'any',
              cname('logical' .. name),
              {{name=Tensor},
 		{name="boolean", creturned=true}})

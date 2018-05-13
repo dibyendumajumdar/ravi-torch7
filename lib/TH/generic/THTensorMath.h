@@ -142,6 +142,9 @@ TH_API void THTensor_(geTensorT)(THTensor *r_, THTensor *ta, THTensor *tb);
 TH_API void THTensor_(neTensorT)(THTensor *r_, THTensor *ta, THTensor *tb);
 TH_API void THTensor_(eqTensorT)(THTensor *r_, THTensor *ta, THTensor *tb);
 
+TH_API void THTensor_(pow)(THTensor *r_, THTensor *t, real value);
+TH_API void THTensor_(tpow)(THTensor *r_, real value, THTensor *t);
+
 #if defined(TH_REAL_IS_SHORT) || defined(TH_REAL_IS_INT) || defined(TH_REAL_IS_LONG)
 TH_API void THTensor_(abs)(THTensor *r_, THTensor *t);
 #endif
@@ -154,7 +157,9 @@ TH_API void THTensor_(lgamma)(THTensor *r_, THTensor *t);
 TH_API void THTensor_(digamma)(THTensor *r_, THTensor *t);
 TH_API void THTensor_(trigamma)(THTensor *r_, THTensor *t);
 TH_API void THTensor_(polygamma)(THTensor *r_, int64_t n, THTensor *t);
+TH_API void THTensor_(log10)(THTensor *r_, THTensor *t);
 TH_API void THTensor_(log1p)(THTensor *r_, THTensor *t);
+TH_API void THTensor_(log2)(THTensor *r_, THTensor *t);
 TH_API void THTensor_(exp)(THTensor *r_, THTensor *t);
 TH_API void THTensor_(expm1)(THTensor *r_, THTensor *t);
 TH_API void THTensor_(cos)(THTensor *r_, THTensor *t);
@@ -169,8 +174,6 @@ TH_API void THTensor_(atan2)(THTensor *r_, THTensor *tx, THTensor *ty);
 TH_API void THTensor_(tanh)(THTensor *r_, THTensor *t);
 TH_API void THTensor_(erf)(THTensor *r_, THTensor *t);
 TH_API void THTensor_(erfinv)(THTensor *r_, THTensor *t);
-TH_API void THTensor_(pow)(THTensor *r_, THTensor *t, real value);
-TH_API void THTensor_(tpow)(THTensor *r_, real value, THTensor *t);
 TH_API void THTensor_(sqrt)(THTensor *r_, THTensor *t);
 TH_API void THTensor_(rsqrt)(THTensor *r_, THTensor *t);
 TH_API void THTensor_(ceil)(THTensor *r_, THTensor *t);
@@ -205,8 +208,10 @@ TH_API void THTensor_(dirichlet_grad)(THTensor *self, THTensor *x, THTensor *alp
 
 #if defined(TH_REAL_IS_BYTE)
 
-TH_API int THTensor_(logicalall)(THTensor *self);
-TH_API int THTensor_(logicalany)(THTensor *self);
+TH_API int THTensor_(logicalAndAll)(THTensor *self);
+TH_API int THTensor_(logicalAnyAll)(THTensor *self);
+TH_API void THTensor_(logicalAnd)(THTensor *r_, THTensor *t, int dimension, int keepdim);
+TH_API void THTensor_(logicalAny)(THTensor *r_, THTensor *t, int dimension, int keepdim);
 
 #endif /* TH_REAL_IS_BYTE */
 
