@@ -21,8 +21,12 @@
 However, this does not work when we are trying to use system-installed lua,
 hence these redefines
 */
+#ifndef luaL_optlong
 #define luaL_optlong(L,n,d)     ((int64_t)luaL_optinteger(L, (n), (d)))
+#endif
+#ifndef luaL_checklong
 #define luaL_checklong(L,n)     ((int64_t)luaL_checkinteger(L, (n)))
+#endif
 #define luaL_checkint(L,n)      ((int)luaL_checkinteger(L, (n)))
 #endif
 

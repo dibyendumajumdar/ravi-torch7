@@ -713,6 +713,7 @@ void THTensor_(free)(THTensor *self)
       THFree(self->stride);
       if(self->storage)
         THStorage_(free)(self->storage);
+      self->refcount = 0;
       THFree(self);
     }
   }

@@ -82,9 +82,9 @@ static int torch_Tensor_(storageOffset)(lua_State *L)
 
 static int torch_Tensor_(new)(lua_State *L)
 {
-  THTensor *tensor;
+  THTensor *tensor = NULL;
   ptrdiff_t storageOffset;
-  THLongStorage *size, *stride;
+  THLongStorage *size = NULL, *stride = NULL;
 
   if(lua_type(L, 1) == LUA_TTABLE)
   {
@@ -195,7 +195,7 @@ static int torch_Tensor_(new)(lua_State *L)
   }
   else
   {
-    THStorage *storage;
+    THStorage *storage = NULL;
 
     torch_Tensor_(c_readTensorStorageSizeStride)(L, 1, 1, 1, 1, 1,
                                                  &storage, &storageOffset, &size, &stride);
@@ -213,9 +213,9 @@ static int torch_Tensor_(new)(lua_State *L)
 static int torch_Tensor_(set)(lua_State *L)
 {
   THTensor *self = luaT_checkudata(L, 1, torch_Tensor);
-  THStorage *storage;
-  ptrdiff_t storageOffset;
-  THLongStorage *size, *stride;
+  THStorage *storage = NULL;
+  ptrdiff_t storageOffset = 0;
+  THLongStorage *size = NULL, *stride = NULL;
 
   torch_Tensor_(c_readTensorStorageSizeStride)(L, 2, 1, 1, 1, 1,
                                                &storage, &storageOffset, &size, &stride);
@@ -258,7 +258,7 @@ static int torch_Tensor_(resizeAs)(lua_State *L)
 static int torch_Tensor_(resize)(lua_State *L)
 {
   THTensor *tensor = luaT_checkudata(L, 1, torch_Tensor);
-  THLongStorage *size, *stride;
+  THLongStorage *size = NULL, *stride = NULL;
 
   torch_Tensor_(c_readSizeStride)(L, 2, 0, &size, &stride);
 

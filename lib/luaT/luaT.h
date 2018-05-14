@@ -39,7 +39,9 @@ extern "C" {
 # define lua_setuservalue lua_setfenv
 # define lua_getuservalue lua_getfenv
 #else
+#ifndef lua_objlen
 # define lua_objlen lua_rawlen
+#endif
 static int luaL_typerror(lua_State *L, int narg, const char *tname)
 {
   return luaL_error(L, "%s expected, got %s", tname, luaL_typename(L, narg));

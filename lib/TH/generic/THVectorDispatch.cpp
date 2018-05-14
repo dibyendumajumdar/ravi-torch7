@@ -258,7 +258,7 @@ void THVector_(normal_fill)(real *data,
 #if defined(TH_REAL_IS_FLOAT) || defined(TH_REAL_IS_DOUBLE)
 static void (*THVector_(sigmoid_DISPATCHPTR))(real *, const real *, const ptrdiff_t) = &THVector_(sigmoid_DEFAULT);
 static FunctionDescription THVector_(sigmoid_DISPATCHTABLE)[] = {
-  #if defined(TH_REAL_IS_FLOAT) && defined(USE_AVX2) && 0
+  #if defined(TH_REAL_IS_FLOAT) && defined(USE_AVX2)
       FUNCTION_IMPL(THVector_(sigmoid_AVX2), SIMDExtension_AVX2),
   #endif
 

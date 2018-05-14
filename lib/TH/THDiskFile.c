@@ -594,7 +594,7 @@ static ssize_t THDiskFile_readString(THFile *self, const char *format, char **st
 }
 
 
-static size_t THDiskFile_writeString(THFile *self, const char *str, size_t size)
+static ssize_t THDiskFile_writeString(THFile *self, const char *str, ssize_t size)
 {
   THDiskFile *dfself = (THDiskFile*)(self);
   ssize_t nwrite;

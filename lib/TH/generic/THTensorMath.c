@@ -452,9 +452,9 @@ void THTensor_(take)(THTensor *r_, THTensor *src, THLongTensor *index)
   int isContiguous = THTensor_(isContiguous)(src);
 
   // Exceptions must not be thrown across OpenMP parallel sections, so we
-  // record the value of the invalid index and throw the exception after the
+  // record the position of the invalid index and throw the exception after the
   // loop.
-  int64_t invalidIdx = -1;
+  int64_t invalidIdxPos = -1;
 
   ptrdiff_t i;
   #pragma omp parallel for if(nIndices > TH_OMP_OVERHEAD_THRESHOLD) private(i)
@@ -468,12 +468,12 @@ void THTensor_(take)(THTensor *r_, THTensor *src, THLongTensor *index)
         dst_data[i] = src_data[THTensor_(dataOffset)(src, idx)];
       }
     } else {
-      THAtomicCompareAndSwapLong(&invalidIdx, -1, idx);
+      THAtomicCompareAndSwapLong(&invalidIdxPos, -1, i);
     }
   }
 
-  if (invalidIdx >= 0) {
-    THTensor_(checkLinearIndex)(index_data[invalidIdx], srcElements);
+  if (invalidIdxPos >= 0) {
+    THTensor_(checkLinearIndex)(index_data[invalidIdxPos], srcElements);
   }
 
   THLongTensor_free(index);
@@ -615,38 +615,6 @@ void THTensor_(scatter)(THTensor *tensor, int dim, THLongTensor *index, THTensor
              "Input tensor must have same dimensions as output tensor");
 
   elems_per_row = THLongTensor_size(index, dim);
-
-  // Assumes TENSOR1 is real
-  //         TENSOR2 is src
-  //         TENSOR3 is index
-  // Tests:
-  //   1. index->size[d] <= src->size[d] for all d
-  //   2. index->size[d] <= real->size[d] for all d != dim
-  #define TH_TENSOR_DIM_APPLY3_SIZE_SCATTER(TENSOR1, TENSOR2, TENSOR3, DIMENSION) \
-  { \
-    int shape_check_flag = 0; \
-    for(TH_TENSOR_DIM_APPLY_i = 0; TH_TENSOR_DIM_APPLY_i < TENSOR1->nDimension; TH_TENSOR_DIM_APPLY_i++) \
-    { \
-      int64_t TENSOR3##_dim_size = TENSOR3->size[TH_TENSOR_DIM_APPLY_i]; \
-      if (TH_TENSOR_DIM_APPLY_i != DIMENSION) { \
-        if (TENSOR3##_dim_size > TENSOR1->size[TH_TENSOR_DIM_APPLY_i]) { \
-          shape_check_flag = 1; \
-          break; \
-        } \
-      } \
-      if (TENSOR3##_dim_size > TENSOR2->size[TH_TENSOR_DIM_APPLY_i]) { \
-        shape_check_flag = 1; \
-        break; \
-      } \
-    } \
-    if (shape_check_flag == 1) { \
-      THDescBuff T1buff = _THSizeDesc(TENSOR1->size, TENSOR1->nDimension); \
-      THDescBuff T2buff = _THSizeDesc(TENSOR2->size, TENSOR2->nDimension); \
-      THDescBuff T3buff = _THSizeDesc(TENSOR3->size, TENSOR3->nDimension); \
-      THError("Expected %s %s to be smaller size than %s %s and to be smaller than %s %s apart from dimension %d", \
-              #TENSOR3, T3buff.str, #TENSOR2, T2buff.str, #TENSOR1, T1buff.str, DIMENSION); \
-    } \
-  }
 
   TH_TENSOR_DIM_APPLY3(real, tensor, real, src, int64_t, index, dim,
                        TH_TENSOR_DIM_APPLY3_SIZE_SCATTER,
@@ -3654,6 +3622,7 @@ void THTensor_(catArray)(THTensor *result, THTensor **inputs, int numInputs, int
   }
 
   // Compute cat_dimension based on the non-empty tensor
+  // NOTE Merging latest Aten change here cause test to break
   THArgCheck(dimension >= -2 && dimension < nDims, 4, "invalid dimension %d", dimension);
   // When the user input dimension is -1 (i.e. -2 in C)
   // Then we pick the last dimension across non-empty tensors.

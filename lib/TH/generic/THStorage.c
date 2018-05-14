@@ -122,6 +122,7 @@ void THStorage_(free)(THStorage *storage)
       if(storage->flag & TH_STORAGE_VIEW) {
         THStorage_(free)(storage->view);
       }
+      storage->refcount = 0;
       THFree(storage);
     }
   }

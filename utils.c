@@ -29,7 +29,7 @@ THLongStorage* torch_checklongargs(lua_State *L, int index)
         THLongStorage_free(storage);
         luaL_argerror(L, i, "number expected");
       }
-      THLongStorage_set(storage, i-index, lua_tonumber(L, i));
+      THLongStorage_set(storage, i-index, lua_tointeger(L, i));
     }
   }
   return storage;

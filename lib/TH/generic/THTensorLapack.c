@@ -259,6 +259,7 @@ void THTensor_(gels)(THTensor *rb_, THTensor *ra_, THTensor *b, THTensor *a)
                                      if (free_b) THTensor_(free)(b);),
                            "gels", info,"");
 
+  /* NOTE that merging the latest Aten code here causes tests to break */
   /* rb__ is currently ldb by nrhs; resize it to n by nrhs */
   rb__->size[0] = n;
   if (rb__ != rb_)
