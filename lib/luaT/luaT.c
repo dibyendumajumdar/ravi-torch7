@@ -185,6 +185,8 @@ const char *luaT_typenameid(lua_State *L, const char *tname)
   return NULL;
 }
 
+#define NO_CATA 1
+#if !NO_CDATA
 static const char cdataname[] = ""
   "local ok, ffi = pcall(require, 'ffi')\n"
   "if ok then\n"
@@ -277,12 +279,16 @@ static int luaT_iscdata(lua_State *L, int ud)
   lua_pop(L, 2);
   return iscdata;
 }
+#endif
 
 const char* luaT_typename(lua_State *L, int ud)
 {
+#if !NO_CATA
   if(luaT_iscdata(L, ud))
     return luaT_cdataname(L, ud, NULL);
-  else if(lua_getmetatable(L, ud))
+  else 
+#endif
+  if(lua_getmetatable(L, ud))
   {
     const char *tname = NULL;
     lua_rawget(L, LUA_REGISTRYINDEX);
@@ -909,7 +915,9 @@ int luaT_lua_metatype(lua_State *L)
 
   if(lua_gettop(L) == 3)
   {
+#if !NO_CATA
     if(!luaT_cdataname(L, 3, lua_tostring(L, 1)))
+#endif
       luaL_error(L, "could not register cdata type -- missing ffi library?");
   }
 
@@ -935,8 +943,10 @@ int luaT_lua_pushudata(lua_State *L)
 
   if(lua_type(L, 1) == 10)
     udata = *((void**)lua_topointer(L, 1));
+#if !NO_CATA
   else if(luaT_iscdata(L, 1))
     udata = ((void**)lua_topointer(L, 1))[4];
+#endif
   else if(lua_isnumber(L, 1))
     udata = (void*)(uintptr_t)lua_tonumber(L, 1);
   else
@@ -1034,12 +1044,14 @@ int luaT_lua_pointer(lua_State *L)
     luaT_pushpointer(L, ptr);
     return 1;
   }
+#if !NO_CDATA
   else if (luaT_iscdata(L, 1)) /* luaffi cdata */
   {
     void** ptr = (void**)lua_touserdata(L, 1);
     luaT_pushpointer(L, ptr[4]);
     return 1;
   }
+#endif
   else if(lua_isuserdata(L, 1))
   {
     void **ptr;
@@ -1097,6 +1109,7 @@ int luaT_lua_version(lua_State *L)
 {
   luaL_checkany(L, 1);
 
+#if !NO_CDATA
   if(luaT_iscdata(L, 1))
   {
     const char *tname = luaT_cdataname(L, 1, NULL);
@@ -1109,7 +1122,9 @@ int luaT_lua_version(lua_State *L)
     }
     return 0;
   }
-  else if(lua_getmetatable(L, 1))
+  else
+#endif
+  if(lua_getmetatable(L, 1))
   {
     lua_pushstring(L, "__version");
     lua_rawget(L, -2);

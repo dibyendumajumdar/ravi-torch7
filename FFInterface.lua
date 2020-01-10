@@ -4,6 +4,8 @@
 -- https://github.com/facebook/luaffifb
 local ok, ffi = pcall(require, 'ffi')
 
+error('Unsupported')
+
 local function checkArgument(condition, fn, ud, msg, level)
    local level = level or 3
    if not condition then
